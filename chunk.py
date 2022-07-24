@@ -13,25 +13,32 @@ def split_f(message, file: bytes, bot):
     while byte:
         chunk_name = ''.join(file_name.split('.')[:-1]) + '_chunk_' + str(chunk) + '.txt'
         id_ms = bot.send_document(message.chat.id, byte, visible_file_name=chunk_name)
-        print(id_ms)
         chunk += 1
         byte = file.read(chunk_size)
-        # array_of_chunks.append(str(file_chunk.name))
-
+        array_of_chunks.append(str(id_ms.message_id))
     chunks = " ".join(array_of_chunks)  # Convert array to string
 
     return (
         {
-            'chunks': chunks,
+            'id_message': chunks,
             'name': file_name
         })
 
 
-def merge_f(file_info: dict):
-    array_of_chunks = file_info.get('chunks').split()  # Convert string to array
-    with open('copy_' + file_info.get('name'), 'wb') as return_file:
-        for chunk in array_of_chunks:
-            with open(chunk, 'rb') as chunk:
-                return_file.write(chunk.read())
+def merge_f(message, file_info: dict, bot):
+    id_messages = file_info['id_message'].split()  # Convert string to array
 
-    print('Файл')
+    file_name = file_info['name']
+    buf_file = b''
+    for data in id_messages:
+        ms = bot.forward_message(chat_id=message.chat.id, from_chat_id=message.chat.id, message_id=data)
+        file_id = ms.document.file_id
+        file = bot.get_file(file_id)
+        file = io.BytesIO(bot.download_file(file.file_path))
+        byte = file.read()
+        buf_file = buf_file+byte
+    info = bot.send_document(message.chat.id, buf_file, visible_file_name=file_name, caption='Mergen file: '+file_name)
+    print(file_name, str(info.document.file_size)+' bytes')
+
+
+
